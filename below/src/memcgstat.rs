@@ -1,4 +1,4 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
+// Copyright (c) Meta Platforms, Inc. and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod bpf {
-    include!(concat!(env!("OUT_DIR"), "/exitstat.skel.rs"));
-}
-mod bpf_cgroup {
-    include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
-}
-mod bpf_memcg {
-    include!(concat!(env!("OUT_DIR"), "/memcgstat_defs.rs"));
-}
-pub mod commands;
-pub mod gpu_stats;
-pub mod init;
-pub mod logging;
-pub mod statistics;
+use std::mem::MaybeUninit;
+use libbpf_rs::skel::OpenSkel as _;
+use libbpf_rs::skel::Skel as _;
+use libbpf_rs::skel::SkelBuilder as _;
 
-pub use bpf::ExitstatSkelBuilder;
-pub use bpf_cgroup::MemcgstatSkelBuilder;
-pub use bpf_memcg::memcg_item;
+use crate::MemcgstatSkelBuilder;
+
+pub struct MemcgstatDriver {
+    buffer: i32,
+}
+
+impl MemcgstatDriver {
+    pub fn new() -> Self {
+        Self {
+            buffer: 0,
+        }
+    }
+
+}
