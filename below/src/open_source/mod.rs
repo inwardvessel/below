@@ -15,12 +15,6 @@
 mod bpf {
     include!(concat!(env!("OUT_DIR"), "/exitstat.skel.rs"));
 }
-mod bpf_cgroup {
-    include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
-}
-mod bpf_memcg {
-    include!(concat!(env!("OUT_DIR"), "/memcgstat_defs.rs"));
-}
 pub mod commands;
 pub mod gpu_stats;
 pub mod init;
@@ -28,5 +22,3 @@ pub mod logging;
 pub mod statistics;
 
 pub use bpf::ExitstatSkelBuilder;
-pub use bpf_cgroup::MemcgstatSkelBuilder;
-pub use bpf_memcg::memcg_item;

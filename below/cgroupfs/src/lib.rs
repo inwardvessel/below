@@ -37,6 +37,10 @@ use thiserror::Error;
 mod types;
 pub use types::*;
 
+mod memcgstat;
+use memcgstat::MemcgstatDriver;
+
+
 #[cfg(test)]
 mod test;
 
@@ -260,6 +264,9 @@ impl CgroupReader {
                 return Err(Error::NotCgroup2(path));
             }
         }
+
+        let driver = MemcgstatDriver::new();
+        println!("========== val: {}", driver.buffer);
 
         Ok(CgroupReader {
             relative_path,

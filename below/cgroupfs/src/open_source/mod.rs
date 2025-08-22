@@ -13,3 +13,13 @@
 // limitations under the License.
 
 mod network_counters;
+
+mod bpf_cgroup {
+    include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
+}
+mod bpf_memcg {
+    include!(concat!(env!("OUT_DIR"), "/memcgstat_defs.rs"));
+}
+
+pub use bpf_cgroup::MemcgstatSkelBuilder;
+pub use bpf_memcg::memcg_item;

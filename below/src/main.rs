@@ -39,13 +39,6 @@ use std::time::Duration;
 use std::time::Instant;
 use std::time::SystemTime;
 use std::mem::MaybeUninit;
-use crate::MemcgstatSkelBuilder;
-
-use std::io::Read;
-use libbpf_rs::skel::OpenSkel as _;
-use libbpf_rs::skel::Skel as _;
-use libbpf_rs::skel::SkelBuilder as _;
-use libbpf_rs::Iter;
 
 use anyhow::Context;
 use anyhow::Error;
@@ -74,11 +67,9 @@ use tempfile::TempDir;
 use tokio::runtime::Builder as TB;
 
 mod exitstat;
-mod memcgstat;
 #[cfg(test)]
 mod test;
 
-include!(concat!(env!("OUT_DIR"), "/memcgstat_defs.rs"));
 
 use common::cliutil;
 use common::logutil;
@@ -1206,28 +1197,6 @@ fn record(
         start_exitstat(logger.clone(), debug)
     };
     let mut bpf_err_warned = false;
-
-    let mut skel_builder = MemcgstatSkelBuilder::default();
-
-    let mut object = MaybeUninit::uninit();
-    let mut open_skel = skel_builder.open(&mut object)?;
-    let rodata = open_skel.maps.rodata_data
-        .as_deref_mut()
-        .expect("no rodata");
-
-    rodata.nr_items = 8;
-    rodata.items[0] = memcg_item_USER_NR_SHMEM as memcg_item;
-
-    let mut skel = open_skel.load()?;
-    skel.attach()?;
-
-    let mut file = fs::File::open("/sys/fs/cgroup/memory.stat")?;
-    //let prog = skel.links.query.unwrap();
-    let prog = skel.progs.query;
-    let link = prog.attach_iter(file.as_fd())?;
-    let mut iter = Iter::new(&link)?;
-    let mut buf = Vec::new();
-    let bytes = iter.read_to_end(&mut buf);
 
     // Handle cgroup filter from conf and generate Regex
     let cgroup_re = if !below_config.cgroup_filter_out.is_empty() {
