@@ -15,12 +15,11 @@
 use std::fs::File;
 use std::io::Read;
 use std::mem::MaybeUninit;
-use std::os::fd::AsFd;
+use std::os::fd::{AsFd,AsRawFd};
 use libbpf_rs::Iter;
 use libbpf_rs::skel::OpenSkel as _;
 use libbpf_rs::skel::Skel as _;
 use libbpf_rs::skel::SkelBuilder as _;
-
 
 mod bpf {
     include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
@@ -31,7 +30,7 @@ pub use bpf::MemcgstatSkelBuilder;
 
 
 pub struct MemcgstatDriver {
-    pub buffer: i32,
+    pub buffer: String,
 }
 
 impl MemcgstatDriver {
@@ -44,23 +43,32 @@ impl MemcgstatDriver {
             .as_deref_mut()
             .expect("no rodata");
 
-        rodata.nr_items = 1;
+        //rodata.nr_items = 1;
         rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
 
-        let mut skel = open_skel.load().unwrap();
+        let mut skel = match open_skel.load() {
+            Ok(res) => res,
+            Err(error) => panic!("load error: {error:?}"),
+        };
         skel.attach();
 
-        let mut file = File::open("/sys/fs/cgroup/memory.stat").unwrap();
+        let mut file = match File::open("/sys/fs/cgroup/memory.stat") {
+            Ok(res) => res,
+            Err(error) => panic!("open error: {error:?}"),
+        };
+
         //let prog = skel.links.query.unwrap();
-        let prog = skel.progs.query;
-        let link = prog.attach_iter(file.as_fd()).unwrap();
+        let link = skel.progs.query.attach_iter(file.as_fd()).unwrap();
+        //let link = match prog.attach_iter(file.as_fd()) {
+        //    Ok(res) => res,
+        //    Err(error) => panic!("attach error: {error:?}"),
+        //};
         let mut iter = Iter::new(&link).unwrap();
-        let mut buf = Vec::new();
-        let bytes = iter.read_to_end(&mut buf);
+        let mut buf = String::new();
+        let bytes = iter.read_to_string(&mut buf);
 
         Self {
-            buffer: 1,
+            buffer: buf,
         }
     }
-
 }
