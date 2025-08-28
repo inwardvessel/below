@@ -184,7 +184,8 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 	//	}
 	//}
 
-	bpf_seq_write(seq, results, sizeof(int) * nr_items);
+	int i = 42;
+	bpf_seq_write(seq, &i, sizeof(i));
 
 	return 0;
 }

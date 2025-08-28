@@ -267,6 +267,7 @@ impl CgroupReader {
 
         let driver = MemcgstatDriver::new();
         println!("========== val: {}", driver.buffer);
+        unreachable!("done");
 
         Ok(CgroupReader {
             relative_path,

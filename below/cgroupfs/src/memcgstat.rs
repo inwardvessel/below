@@ -12,14 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fs::File;
+use core::ptr::NonNull;
+use std::env;
+use std::path::PathBuf;
+use std::fs::{File,OpenOptions};
 use std::io::Read;
 use std::mem::MaybeUninit;
 use std::os::fd::{AsFd,AsRawFd};
-use libbpf_rs::Iter;
+use libbpf_rs::{
+    AsRawLibbpf,
+    Iter,
+    Link,
+    ObjectBuilder,
+};
 use libbpf_rs::skel::OpenSkel as _;
 use libbpf_rs::skel::Skel as _;
 use libbpf_rs::skel::SkelBuilder as _;
+use libbpf_rs::libbpf_sys::{
+    bpf_iter_link_info,
+    bpf_iter_attach_opts,
+    bpf_iter_create,
+    bpf_link__fd,
+    bpf_program__attach_iter,
+};
 
 mod bpf {
     include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
@@ -39,36 +54,54 @@ impl MemcgstatDriver {
 
         let mut object = MaybeUninit::uninit();
         let mut open_skel = skel_builder.open(&mut object).unwrap();
-        let rodata = open_skel.maps.rodata_data
-            .as_deref_mut()
-            .expect("no rodata");
 
+        //let rodata = open_skel.maps.rodata_data
+        //    .as_deref_mut()
+        //    .expect("no rodata");
         //rodata.nr_items = 1;
-        rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
+        //rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
 
-        let mut skel = match open_skel.load() {
-            Ok(res) => res,
-            Err(error) => panic!("load error: {error:?}"),
+        let mut skel = open_skel.load().expect("load error: {error:?}");
+
+        let mut cgroup_dir = File::open("/sys/fs/cgroup").expect("failed to open dir");
+
+        let mut link_info = unsafe {
+            let mut _link_info: bpf_iter_link_info = std::mem::zeroed();
+            _link_info.cgroup.cgroup_fd = cgroup_dir.as_raw_fd() as u32;
+            _link_info.cgroup.order = 1; /* BPF_CGROUP_ITER_SELF_ONLY = 1 */
+            _link_info
         };
-        skel.attach();
 
-        let mut file = match File::open("/sys/fs/cgroup/memory.stat") {
-            Ok(res) => res,
-            Err(error) => panic!("open error: {error:?}"),
+        let mut attach_opts = unsafe {
+            let mut _attach_opts: bpf_iter_attach_opts = std::mem::zeroed();
+            _attach_opts.sz = std::mem::size_of::<bpf_iter_attach_opts>() as u64;
+            _attach_opts.link_info = &mut link_info as *mut _;
+            _attach_opts.link_info_len = std::mem::size_of::<bpf_iter_link_info>() as u32;
+            _attach_opts
         };
 
-        //let prog = skel.links.query.unwrap();
-        let link = skel.progs.query.attach_iter(file.as_fd()).unwrap();
-        //let link = match prog.attach_iter(file.as_fd()) {
-        //    Ok(res) => res,
-        //    Err(error) => panic!("attach error: {error:?}"),
-        //};
+        let link_ptr = unsafe {
+            bpf_program__attach_iter(skel.progs.query.as_libbpf_object().as_ptr(), &mut attach_opts)
+        };
+        if link_ptr.is_null() {
+            panic!("link is null");
+        }
+
+        let link_x = NonNull::new(link_ptr).expect("pointer");
+        let link = unsafe {
+            Link::from_ptr(link_x)
+        };
+
         let mut iter = Iter::new(&link).unwrap();
-        let mut buf = String::new();
-        let bytes = iter.read_to_string(&mut buf);
+        let mut buf = [0; 1];
+        let bytes = iter.read_exact(&mut buf);
+
+        for i in buf {
+            println!("i: {}", i);
+        }
 
         Self {
-            buffer: buf,
+            buffer: String::from("works"),
         }
     }
 }
