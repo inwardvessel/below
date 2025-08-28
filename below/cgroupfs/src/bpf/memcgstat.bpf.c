@@ -24,9 +24,9 @@
 
 char _license[] SEC("license") = "GPL";
 
-//extern void memcg_flush(struct cgroup *cgrp) __ksym;
-//extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, int item) __ksym;
-//extern unsigned long memcg_event_fetch(struct cgroup *cgrp, int event) __ksym;
+extern void memcg_flush(struct cgroup *cgrp) __ksym;
+extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, int item) __ksym;
+extern unsigned long memcg_event_fetch(struct cgroup *cgrp, int event) __ksym;
 
 const volatile size_t nr_items = 64;
 //const volatile enum memcg_item items[64];
@@ -53,11 +53,11 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 	if (!cgrp)
 		return 1;
 
-	//memcg_flush(cgrp);
+	memcg_flush(cgrp);
 
-	//size_t i;
-	//for (i = 0; i < nr_items; i++) {
-	//	switch (items[i]) {
+	size_t i;
+	for (i = 0; i < nr_items; i++) {
+		switch (items[i]) {
 	//		case USER_NR_INACTIVE_ANON:
 	//			results[i] = stat_fetch(cgrp, NR_INACTIVE_ANON);
 	//			break;
@@ -115,9 +115,10 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 	//		case USER_NR_WRITEBACK:
 	//			results[i] = stat_fetch(cgrp, NR_WRITEBACK);
 	//			break;
-	//		case USER_NR_SHMEM:
-	//			results[i] = stat_fetch(cgrp, NR_SHMEM);
-	//			break;
+			case USER_NR_SHMEM:
+				results[i] = stat_fetch(cgrp, NR_SHMEM);
+				bpf_printk("NR_SHMEM:%d\n", results[i]);
+				break;
 	//		case USER_NR_SHMEM_THPS:
 	//			results[i] = stat_fetch(cgrp, NR_SHMEM_THPS);
 	//			break;
@@ -178,14 +179,13 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 	//		case USER_MEMCG_ZSWAPPED:
 	//			results[i] = event_fetch(cgrp, MEMCG_ZSWAPPED);
 	//			break;
-	//		default:
-	//			results[i] = -1;
-	//			break;
-	//	}
-	//}
+			default:
+				results[i] = -1;
+				break;
+		}
+	}
 
-	int i = 42;
-	bpf_seq_write(seq, &i, sizeof(i));
+	bpf_seq_write(seq, results, sizeof(results[0]) * nr_items);
 
 	return 0;
 }

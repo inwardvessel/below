@@ -55,11 +55,11 @@ impl MemcgstatDriver {
         let mut object = MaybeUninit::uninit();
         let mut open_skel = skel_builder.open(&mut object).unwrap();
 
-        //let rodata = open_skel.maps.rodata_data
-        //    .as_deref_mut()
-        //    .expect("no rodata");
-        //rodata.nr_items = 1;
-        //rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
+        let rodata = open_skel.maps.rodata_data
+            .as_deref_mut()
+            .expect("no rodata");
+        rodata.nr_items = 1;
+        rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
 
         let mut skel = open_skel.load().expect("load error: {error:?}");
 
@@ -93,10 +93,12 @@ impl MemcgstatDriver {
         };
 
         let mut iter = Iter::new(&link).unwrap();
-        let mut buf = [0; 1];
-        let bytes = iter.read_exact(&mut buf);
+        let mut buf = Vec::new();
+        let bytes = iter.read_to_end(&mut buf);
 
-        for i in buf {
+        for chunk in buf.chunks_exact(4) {
+            let _buf: [u8; 4] = chunk.try_into().unwrap();
+            let i = i32::from_le_bytes(_buf);
             println!("i: {}", i);
         }
 
