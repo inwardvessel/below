@@ -71,6 +71,7 @@ pub struct CgroupReader {
     relative_path: PathBuf,
     dir: Dir,
     buffer: RefCell<Vec<u8>>,
+    memcgstat_driver: MemcgstatDriver,
 }
 
 fn parse_integer_or_max(s: &str) -> std::result::Result<i64, String> {
@@ -273,6 +274,7 @@ impl CgroupReader {
             relative_path,
             dir,
             buffer: RefCell::new(Vec::new()),
+            memcgstat_driver: driver,
         })
     }
 
@@ -470,6 +472,10 @@ impl CgroupReader {
         MemoryStat::read(self)
     }
 
+    pub fn read_memcg_stat(&self) -> Result<MemoryStat> {
+        MemoryStat::read(self)
+    }
+
     pub fn read_memory_events(&self) -> Result<MemoryEvents> {
         MemoryEvents::read(self)
     }
@@ -643,6 +649,7 @@ impl CgroupReader {
                         relative_path,
                         dir,
                         buffer: RefCell::new(Vec::new()),
+                        memcgstat_driver: MemcgstatDriver::new(),
                     })
                 }
                 _ => None,

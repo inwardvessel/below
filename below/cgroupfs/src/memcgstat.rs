@@ -53,13 +53,7 @@ impl MemcgstatDriver {
         let mut skel_builder = MemcgstatSkelBuilder::default();
 
         let mut object = MaybeUninit::uninit();
-        let mut open_skel = skel_builder.open(&mut object).unwrap();
-
-        let rodata = open_skel.maps.rodata_data
-            .as_deref_mut()
-            .expect("no rodata");
-        rodata.nr_items = 1;
-        rodata.items[0] = bpf::memcg_item_USER_NR_SHMEM as bpf::memcg_item;
+        let mut open_skel = skel_builder.open(&mut object).expect("failed to open skel");
 
         let mut skel = open_skel.load().expect("load error: {error:?}");
 

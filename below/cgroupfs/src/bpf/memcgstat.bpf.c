@@ -25,22 +25,25 @@
 char _license[] SEC("license") = "GPL";
 
 extern void memcg_flush(struct cgroup *cgrp) __ksym;
-extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, int item) __ksym;
-extern unsigned long memcg_event_fetch(struct cgroup *cgrp, int event) __ksym;
+extern unsigned long node_stat_fetch(struct cgroup *cgrp, enum node_stat_item item) __ksym;
+extern unsigned long vm_event_fetch(struct cgroup *cgrp, enum vm_event_item item) __ksym;
+extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, enum memcg_stat_item item) __ksym;
 
-const volatile size_t nr_items = 64;
-//const volatile enum memcg_item items[64];
-const volatile unsigned int items[64];
-int results[64];
+int results[USER_ITEM_COUNT];
 
-#define stat_fetch(cgrp, item) \
+#define node_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum node_stat_item, item) ? \
-		 memcg_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
+		 node_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
 				 : -1;
 
-#define event_fetch(cgrp, item) \
+#define vm_event_fetch_if_exists(cgrp, item) \
+	bpf_core_enum_value_exists(enum vm_event_item, item) ? \
+		 vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item)) \
+				 : -1;
+
+#define memcg_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum memcg_stat_item, item) ? \
-		 memcg_event_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+		 memcg_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
 				 : -1;
 
 SEC("iter/cgroup")
@@ -55,137 +58,125 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 
 	memcg_flush(cgrp);
 
-	size_t i;
-	for (i = 0; i < nr_items; i++) {
-		switch (items[i]) {
-	//		case USER_NR_INACTIVE_ANON:
-	//			results[i] = stat_fetch(cgrp, NR_INACTIVE_ANON);
-	//			break;
-	//		case USER_NR_ACTIVE_ANON:
-	//			results[i] = stat_fetch(cgrp, NR_ACTIVE_ANON);
-	//			break;
-	//		case USER_NR_INACTIVE_FILE:
-	//			results[i] = stat_fetch(cgrp, NR_INACTIVE_FILE);
-	//			break;
-	//		case USER_NR_ACTIVE_FILE:
-	//			results[i] = stat_fetch(cgrp, NR_ACTIVE_FILE);
-	//			break;
-	//		case USER_NR_UNEVICTABLE:
-	//			results[i] = stat_fetch(cgrp, NR_UNEVICTABLE);
-	//			break;
-	//		case USER_NR_SLAB_RECLAIMABLE_B:
-	//			results[i] = stat_fetch(cgrp, NR_SLAB_RECLAIMABLE_B);
-	//			break;
-	//		case USER_NR_SLAB_UNRECLAIMABLE_B:
-	//			results[i] = stat_fetch(cgrp, NR_SLAB_UNRECLAIMABLE_B);
-	//			break;
-	//		case USER_WORKINGSET_REFAULT_ANON:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_REFAULT_ANON);
-	//			break;
-	//		case USER_WORKINGSET_REFAULT_FILE:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_REFAULT_FILE);
-	//			break;
-	//		case USER_WORKINGSET_ACTIVATE_ANON:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_ACTIVATE_ANON);
-	//			break;
-	//		case USER_WORKINGSET_ACTIVATE_FILE:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_ACTIVATE_FILE);
-	//			break;
-	//		case USER_WORKINGSET_RESTORE_ANON:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_RESTORE_ANON);
-	//			break;
-	//		case USER_WORKINGSET_RESTORE_FILE:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_RESTORE_FILE);
-	//			break;
-	//		case USER_WORKINGSET_NODERECLAIM:
-	//			results[i] = stat_fetch(cgrp, WORKINGSET_NODERECLAIM);
-	//			break;
-	//		case USER_NR_ANON_MAPPED:
-	//			results[i] = stat_fetch(cgrp, NR_ANON_MAPPED);
-	//			break;
-	//		case USER_NR_FILE_MAPPED:
-	//			results[i] = stat_fetch(cgrp, NR_FILE_MAPPED);
-	//			break;
-	//		case USER_NR_FILE_PAGES:
-	//			results[i] = stat_fetch(cgrp, NR_FILE_PAGES);
-	//			break;
-	//		case USER_NR_FILE_DIRTY:
-	//			results[i] = stat_fetch(cgrp, NR_FILE_DIRTY);
-	//			break;
-	//		case USER_NR_WRITEBACK:
-	//			results[i] = stat_fetch(cgrp, NR_WRITEBACK);
-	//			break;
+	enum memcg_item item;
+	for (item = 0; item < USER_ITEM_COUNT; item++) {
+		switch (item) {
+			/* node_stat_item */
+			case USER_NR_ANON_MAPPED:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_ANON_MAPPED);
+				break;
+			case USER_NR_FILE_PAGES:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_FILE_PAGES);
+				break;
+			case USER_NR_KERNEL_STACK_KB:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_KERNEL_STACK_KB);
+				break;
 			case USER_NR_SHMEM:
-				results[i] = stat_fetch(cgrp, NR_SHMEM);
-				bpf_printk("NR_SHMEM:%d\n", results[i]);
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_SHMEM);
 				break;
-	//		case USER_NR_SHMEM_THPS:
-	//			results[i] = stat_fetch(cgrp, NR_SHMEM_THPS);
-	//			break;
-	//		case USER_NR_FILE_THPS:
-	//			results[i] = stat_fetch(cgrp, NR_FILE_THPS);
-	//			break;
-	//		case USER_NR_ANON_THPS:
-	//			results[i] = stat_fetch(cgrp, NR_ANON_THPS);
-	//			break;
-	//		case USER_NR_KERNEL_STACK_KB:
-	//			results[i] = stat_fetch(cgrp, NR_KERNEL_STACK_KB);
-	//			break;
-	//		case USER_NR_PAGETABLE:
-	//			results[i] = stat_fetch(cgrp, NR_PAGETABLE);
-	//			break;
-	//		case USER_NR_SECONDARY_PAGETABLE:
-	//			results[i] = stat_fetch(cgrp, NR_SECONDARY_PAGETABLE);
-	//			break;
-	//		case USER_NR_SWAPCACHE:
-	//			results[i] = stat_fetch(cgrp, NR_SWAPCACHE);
-	//			break;
-	//		//case USER_PGPROMOTE_SUCCESS:
-	//		//	results[i] = stat_fetch(cgrp, PGPROMOTE_SUCCESS);
-	//		//	break;
-	//		//case USER_PGDEMOTE_KSWAPD:
-	//		//	results[i] = stat_fetch(cgrp, PGDEMOTE_KSWAPD);
-	//		//	break;
-	//		//case USER_PGDEMOTE_DIRECT:
-	//		//	results[i] = stat_fetch(cgrp, PGDEMOTE_DIRECT);
-	//		//	break;
-	//		//case USER_PGDEMOTE_KHUGEPAGED:
-	//		//	results[i] = stat_fetch(cgrp, PGDEMOTE_KHUGEPAGED);
-	//		//	break;
-	//		//case USER_PGDEMOTE_PROACTIVE:
-	//		//	results[i] = stat_fetch(cgrp, PGDEMOTE_PROACTIVE);
-	//		//	break;
-	//		//case USER_NR_HUGETLB:
-	//		//	results[i] = stat_fetch(cgrp, NR_HUGETLB);
-	//		//	break;
-	//		case USER_MEMCG_SWAP:
-	//			results[i] = event_fetch(cgrp, MEMCG_SWAP);
-	//			break;
-	//		case USER_MEMCG_SOCK:
-	//			results[i] = event_fetch(cgrp, MEMCG_SOCK);
-	//			break;
-	//		case USER_MEMCG_PERCPU_B:
-	//			results[i] = event_fetch(cgrp, MEMCG_PERCPU_B);
-	//			break;
-	//		case USER_MEMCG_VMALLOC:
-	//			results[i] = event_fetch(cgrp, MEMCG_VMALLOC);
-	//			break;
-	//		case USER_MEMCG_KMEM:
-	//			results[i] = event_fetch(cgrp, MEMCG_KMEM);
-	//			break;
-	//		case USER_MEMCG_ZSWAP_B:
-	//			results[i] = event_fetch(cgrp, MEMCG_ZSWAP_B);
-	//			break;
-	//		case USER_MEMCG_ZSWAPPED:
-	//			results[i] = event_fetch(cgrp, MEMCG_ZSWAPPED);
-	//			break;
-			default:
-				results[i] = -1;
+			case USER_NR_FILE_MAPPED:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_FILE_MAPPED);
 				break;
+			case USER_NR_FILE_DIRTY:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_FILE_DIRTY);
+				break;
+			case USER_NR_WRITEBACK:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_WRITEBACK);
+				break;
+			case USER_NR_FILE_THPS:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_FILE_THPS);
+				break;
+			case USER_NR_ANON_THPS:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_ANON_THPS);
+				break;
+			case USER_NR_INACTIVE_ANON:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_INACTIVE_ANON);
+				break;
+			case USER_NR_ACTIVE_ANON:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_ACTIVE_ANON);
+				break;
+			case USER_NR_INACTIVE_FILE:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_INACTIVE_FILE);
+				break;
+			case USER_NR_ACTIVE_FILE:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_ACTIVE_FILE);
+				break;
+			case USER_NR_UNEVICTABLE:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_UNEVICTABLE);
+				break;
+			case USER_NR_SLAB_RECLAIMABLE_B:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_SLAB_RECLAIMABLE_B);
+				break;
+			case USER_NR_SLAB_UNRECLAIMABLE_B:
+				results[item] = node_stat_fetch_if_exists(cgrp, NR_SLAB_UNRECLAIMABLE_B);
+				break;
+			case USER_WORKINGSET_REFAULT_ANON:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_REFAULT_ANON);
+				break;
+			case USER_WORKINGSET_REFAULT_FILE:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_REFAULT_FILE);
+				break;
+			case USER_WORKINGSET_ACTIVATE_ANON:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_ACTIVATE_ANON);
+				break;
+			case USER_WORKINGSET_ACTIVATE_FILE:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_ACTIVATE_FILE);
+				break;
+			case USER_WORKINGSET_RESTORE_ANON:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_RESTORE_ANON);
+				break;
+			case USER_WORKINGSET_RESTORE_FILE:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_RESTORE_FILE);
+				break;
+			case USER_WORKINGSET_NODERECLAIM:
+				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_NODERECLAIM);
+				break;
+			/* vm_event_item */
+			case USER_PGFAULT:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGFAULT);
+				break;
+			case USER_PGMAJFAULT:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGMAJFAULT);
+				break;
+			case USER_PGREFILL:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGREFILL);
+				break;
+			case USER_PGACTIVATE:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGACTIVATE);
+				break;
+			case USER_PGDEACTIVATE:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGDEACTIVATE);
+				break;
+			case USER_PGLAZYFREE:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGLAZYFREE);
+				break;
+			case USER_PGLAZYFREED:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGLAZYFREED);
+				break;
+			case USER_THP_FAULT_ALLOC:
+				results[item] = vm_event_fetch_if_exists(cgrp, THP_FAULT_ALLOC);
+				break;
+			case USER_THP_COLLAPSE_ALLOC:
+				results[item] = vm_event_fetch_if_exists(cgrp, THP_COLLAPSE_ALLOC);
+				break;
+			/* memcg_stat_item */
+			case USER_MEMCG_KMEM:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_KMEM);
+				break;
+			case USER_MEMCG_SOCK:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_SOCK);
+				break;
+			case USER_MEMCG_ZSWAP_B:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAP_B);
+				break;
+			case USER_MEMCG_ZSWAPPED:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAPPED);
+				break;
+			/* no default */
 		}
 	}
 
-	bpf_seq_write(seq, results, sizeof(results[0]) * nr_items);
+	bpf_seq_write(seq, results, sizeof(results[0]) * USER_ITEM_COUNT);
 
 	return 0;
 }
