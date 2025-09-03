@@ -43,7 +43,7 @@ int results[USER_ITEM_COUNT];
 
 #define memcg_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum memcg_stat_item, item) ? \
-		 memcg_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+		 node_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
 				 : -1;
 
 SEC("iter/cgroup")
@@ -131,6 +131,19 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 			case USER_WORKINGSET_NODERECLAIM:
 				results[item] = node_stat_fetch_if_exists(cgrp, WORKINGSET_NODERECLAIM);
 				break;
+			/* memcg_stat_item */
+			case USER_MEMCG_KMEM:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_KMEM);
+				break;
+			case USER_MEMCG_SOCK:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_SOCK);
+				break;
+			case USER_MEMCG_ZSWAP_B:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAP_B);
+				break;
+			case USER_MEMCG_ZSWAPPED:
+				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAPPED);
+				break;
 			/* vm_event_item */
 			case USER_PGFAULT:
 				results[item] = vm_event_fetch_if_exists(cgrp, PGFAULT);
@@ -158,19 +171,6 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 				break;
 			case USER_THP_COLLAPSE_ALLOC:
 				results[item] = vm_event_fetch_if_exists(cgrp, THP_COLLAPSE_ALLOC);
-				break;
-			/* memcg_stat_item */
-			case USER_MEMCG_KMEM:
-				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_KMEM);
-				break;
-			case USER_MEMCG_SOCK:
-				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_SOCK);
-				break;
-			case USER_MEMCG_ZSWAP_B:
-				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAP_B);
-				break;
-			case USER_MEMCG_ZSWAPPED:
-				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAPPED);
 				break;
 			/* no default */
 		}

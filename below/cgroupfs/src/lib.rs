@@ -267,7 +267,7 @@ impl CgroupReader {
         }
 
         let driver = MemcgstatDriver::new();
-        println!("========== val: {}", driver.buffer);
+        driver.read("/sys/fs/cgroup");
         unreachable!("done");
 
         Ok(CgroupReader {

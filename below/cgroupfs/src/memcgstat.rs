@@ -24,6 +24,7 @@ use libbpf_rs::{
     Iter,
     Link,
     ObjectBuilder,
+    OpenObject,
 };
 use libbpf_rs::skel::OpenSkel as _;
 use libbpf_rs::skel::Skel as _;
@@ -42,23 +43,184 @@ mod bpf {
 }
 
 pub use bpf::MemcgstatSkelBuilder;
+pub use bpf::MemcgstatSkel;
+pub use bpf::OpenMemcgstatSkel;
+
+struct Pair<'a> {
+    key: bpf::memcg_item,
+    val: &'a str,
+}
+
+static items: [Pair; bpf::memcg_item_USER_ITEM_COUNT as usize] = [
+    Pair {
+        key:bpf::memcg_item_USER_NR_ANON_MAPPED,
+        val: "nr_anono_mapped",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_FILE_PAGES,
+        val: "nr_file_pages",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_KERNEL_STACK_KB,
+        val: "nr_kernel_stack_kb",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_SHMEM,
+        val: "nr_shmem",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_FILE_MAPPED,
+        val: "nr_file_mapped",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_FILE_DIRTY,
+        val: "nr_file_dirty",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_WRITEBACK,
+        val: "nr_writeback",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_FILE_THPS,
+        val: "nr_file_thps",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_ANON_THPS,
+        val: "nr_anon_thps",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_INACTIVE_ANON,
+        val: "nr_inactive_anon",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_ACTIVE_ANON,
+        val: "nr_active_anon",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_INACTIVE_FILE,
+        val: "nr_inactive_file",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_ACTIVE_FILE,
+        val: "nr_active_file",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_UNEVICTABLE,
+        val: "nr_unevictable",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_SLAB_RECLAIMABLE_B,
+        val: "nr_slab_reclaimable_b",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B,
+        val: "nr_slab_unreclaimable_b",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_REFAULT_ANON,
+        val: "workingset_refault_anon",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_REFAULT_FILE,
+        val: "workingset_refault_file",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_ACTIVATE_ANON,
+        val: "workingset_activate_anon",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_ACTIVATE_FILE,
+        val: "workingset_activate_file",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_RESTORE_ANON,
+        val: "workingset_restore_anon",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_RESTORE_FILE,
+        val: "workingset_restore_file",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_WORKINGSET_NODERECLAIM,
+        val: "workingset_nodereclaim",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_MEMCG_KMEM,
+        val: "memcg_kmem",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_MEMCG_SOCK,
+        val: "memcg_sock",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_MEMCG_ZSWAP_B,
+        val: "memcg_zswap_b",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_MEMCG_ZSWAPPED,
+        val: "memcg_zswapped",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGFAULT,
+        val: "pgfault",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGMAJFAULT,
+        val: "pgmajfault",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGREFILL,
+        val: "pgrefill",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGACTIVATE,
+        val: "pgactivate",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGDEACTIVATE,
+        val: "pgdeactivate",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGLAZYFREE,
+        val: "pglazyfree",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_PGLAZYFREED,
+        val: "pglazyfreed",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_THP_FAULT_ALLOC,
+        val: "thp_fault_alloc",
+    },
+    Pair {
+        key: bpf::memcg_item_USER_THP_COLLAPSE_ALLOC,
+        val: "thp_collapse_alloc",
+    },
+];
 
 
 pub struct MemcgstatDriver {
-    pub buffer: String,
+    foo: i32,
+    //pub skel_builder: MemcgstatSkelBuilder,
+    //pub object: MaybeUninit<libbpf_rs::OpenObject>,
+    //pub open_skel: OpenMemcgstatSkel<'a>,
+    //pub skel: MemcgstatSkel<'a>,
 }
 
 impl MemcgstatDriver {
     pub fn new() -> Self {
-        let mut skel_builder = MemcgstatSkelBuilder::default();
+        // TODO - figure out borrowing/moving and move all initialization out of read() and here instead
+        Self {
+            foo: 42,
+        }
+    }
 
+    pub fn read(&self, cgroup_path: &str) {
+        let skel_builder = MemcgstatSkelBuilder::default();
         let mut object = MaybeUninit::uninit();
-        let mut open_skel = skel_builder.open(&mut object).expect("failed to open skel");
-
-        let mut skel = open_skel.load().expect("load error: {error:?}");
-
-        let mut cgroup_dir = File::open("/sys/fs/cgroup").expect("failed to open dir");
-
+        let open_skel = skel_builder.open(&mut object).expect("failed to open skel");
+        let skel = open_skel.load().expect("load error: {error:?}");
+        let mut cgroup_dir = File::open(cgroup_path).expect("failed to open cgroup dir");
         let mut link_info = unsafe {
             let mut _link_info: bpf_iter_link_info = std::mem::zeroed();
             _link_info.cgroup.cgroup_fd = cgroup_dir.as_raw_fd() as u32;
@@ -90,14 +252,12 @@ impl MemcgstatDriver {
         let mut buf = Vec::new();
         let bytes = iter.read_to_end(&mut buf);
 
-        for chunk in buf.chunks_exact(4) {
+        for item in items.iter() {
+            let i = item.key as usize;
+            let chunk = &buf[i*4..i*4 + 4];
             let _buf: [u8; 4] = chunk.try_into().unwrap();
-            let i = i32::from_le_bytes(_buf);
-            println!("i: {}", i);
-        }
-
-        Self {
-            buffer: String::from("works"),
+            let n = i32::from_le_bytes(_buf);
+            println!("{} - {}: {}", i, item.val, n);
         }
     }
 }
