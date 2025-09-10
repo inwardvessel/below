@@ -37,6 +37,8 @@ use libbpf_rs::libbpf_sys::{
     bpf_program__attach_iter,
 };
 
+use crate::types::*;
+
 mod bpf {
     include!(concat!(env!("OUT_DIR"), "/memcgstat.skel.rs"));
     include!(concat!(env!("OUT_DIR"), "/memcgstat_defs.rs"));
@@ -46,6 +48,12 @@ pub use bpf::MemcgstatSkelBuilder;
 pub use bpf::MemcgstatSkel;
 pub use bpf::OpenMemcgstatSkel;
 
+macro_rules! get_from_slice {
+    ($item:path, $buf:ident) => {
+        Some(u64::from_le_bytes($buf[$item as usize .. $item as usize + 4].try_into().unwrap()))
+    }
+}
+
 struct Pair<'a> {
     key: bpf::memcg_item,
     val: &'a str,
@@ -53,8 +61,8 @@ struct Pair<'a> {
 
 static items: [Pair; bpf::memcg_item_USER_ITEM_COUNT as usize] = [
     Pair {
-        key:bpf::memcg_item_USER_NR_ANON_MAPPED,
-        val: "nr_anono_mapped",
+        key: bpf::memcg_item_USER_NR_ANON_MAPPED,
+        val: "nr_anon_mapped",
     },
     Pair {
         key: bpf::memcg_item_USER_NR_FILE_PAGES,
@@ -200,27 +208,27 @@ static items: [Pair; bpf::memcg_item_USER_ITEM_COUNT as usize] = [
 
 
 pub struct MemcgstatDriver {
-    foo: i32,
+    relative_path: PathBuf,
     //pub skel_builder: MemcgstatSkelBuilder,
-    //pub object: MaybeUninit<libbpf_rs::OpenObject>,
     //pub open_skel: OpenMemcgstatSkel<'a>,
+    //pub object: MaybeUninit<'a, libbpf_rs::OpenObject>,
     //pub skel: MemcgstatSkel<'a>,
 }
 
 impl MemcgstatDriver {
-    pub fn new() -> Self {
+    pub fn new(relative_path: PathBuf) -> Self {
         // TODO - figure out borrowing/moving and move all initialization out of read() and here instead
         Self {
-            foo: 42,
+            relative_path: relative_path,
         }
     }
 
-    pub fn read(&self, cgroup_path: &str) {
+    pub fn read(&self) -> Result<MemoryStat, ()> {
         let skel_builder = MemcgstatSkelBuilder::default();
         let mut object = MaybeUninit::uninit();
         let open_skel = skel_builder.open(&mut object).expect("failed to open skel");
         let skel = open_skel.load().expect("load error: {error:?}");
-        let mut cgroup_dir = File::open(cgroup_path).expect("failed to open cgroup dir");
+        let mut cgroup_dir = File::open(self.relative_path.clone()).expect("failed to open cgroup dir");
         let mut link_info = unsafe {
             let mut _link_info: bpf_iter_link_info = std::mem::zeroed();
             _link_info.cgroup.cgroup_fd = cgroup_dir.as_raw_fd() as u32;
@@ -259,5 +267,47 @@ impl MemcgstatDriver {
             let n = i32::from_le_bytes(_buf);
             println!("{} - {}: {}", i, item.val, n);
         }
+
+        Ok(MemoryStat {
+            anon: get_from_slice!(bpf::memcg_item_USER_NR_ANON_MAPPED, buf),
+            file: get_from_slice!(bpf::memcg_item_USER_NR_FILE_PAGES, buf),
+            kernel: get_from_slice!(bpf::memcg_item_USER_MEMCG_KMEM, buf),
+            kernel_stack: get_from_slice!(bpf::memcg_item_USER_NR_KERNEL_STACK_KB, buf),
+            slab: None,
+            sock: get_from_slice!(bpf::memcg_item_USER_MEMCG_SOCK, buf),
+            shmem: get_from_slice!(bpf::memcg_item_USER_NR_SHMEM, buf),
+            zswap: get_from_slice!(bpf::memcg_item_USER_MEMCG_ZSWAP_B, buf),
+            zswapped: get_from_slice!(bpf::memcg_item_USER_MEMCG_ZSWAPPED, buf),
+            file_mapped: get_from_slice!(bpf::memcg_item_USER_NR_FILE_MAPPED, buf),
+            file_dirty: get_from_slice!(bpf::memcg_item_USER_NR_FILE_DIRTY, buf),
+            file_writeback: get_from_slice!(bpf::memcg_item_USER_NR_WRITEBACK, buf),
+            file_thp: get_from_slice!(bpf::memcg_item_USER_NR_FILE_THPS, buf),
+            anon_thp: get_from_slice!(bpf::memcg_item_USER_NR_ANON_THPS, buf),
+            inactive_anon: get_from_slice!(bpf::memcg_item_USER_NR_INACTIVE_ANON, buf),
+            active_anon: get_from_slice!(bpf::memcg_item_USER_NR_ACTIVE_ANON, buf),
+            inactive_file: get_from_slice!(bpf::memcg_item_USER_NR_INACTIVE_FILE, buf),
+            active_file: get_from_slice!(bpf::memcg_item_USER_NR_ACTIVE_FILE, buf),
+            unevictable: get_from_slice!(bpf::memcg_item_USER_NR_UNEVICTABLE, buf),
+            slab_reclaimable: get_from_slice!(bpf::memcg_item_USER_NR_SLAB_RECLAIMABLE_B, buf),
+            slab_unreclaimable: get_from_slice!(bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B, buf),
+            pgfault: get_from_slice!(bpf::memcg_item_USER_PGFAULT, buf),
+            pgmajfault: get_from_slice!(bpf::memcg_item_USER_PGMAJFAULT, buf),
+            workingset_refault_anon: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_REFAULT_ANON, buf),
+            workingset_refault_file: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_REFAULT_FILE, buf),
+            workingset_activate_anon: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_ACTIVATE_ANON, buf),
+            workingset_activate_file: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_ACTIVATE_FILE, buf),
+            workingset_restore_anon: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_RESTORE_ANON, buf),
+            workingset_restore_file: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_RESTORE_FILE, buf),
+            workingset_nodereclaim: get_from_slice!(bpf::memcg_item_USER_WORKINGSET_NODERECLAIM, buf),
+            pgrefill: get_from_slice!(bpf::memcg_item_USER_PGREFILL, buf),
+            pgscan: None,
+            pgsteal: None,
+            pgactivate: None,
+            pgdeactivate: None,
+            pglazyfree: None,
+            pglazyfreed: None,
+            thp_fault_alloc: get_from_slice!(bpf::memcg_item_USER_THP_FAULT_ALLOC, buf),
+            thp_collapse_alloc: get_from_slice!(bpf::memcg_item_USER_THP_COLLAPSE_ALLOC, buf),
+        })
     }
 }

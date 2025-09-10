@@ -266,16 +266,20 @@ impl CgroupReader {
             }
         }
 
-        let driver = MemcgstatDriver::new();
-        driver.read("/sys/fs/cgroup");
-        unreachable!("done");
-
-        Ok(CgroupReader {
-            relative_path,
+        let cgroup_reader = CgroupReader {
+            relative_path: relative_path.clone(),
             dir,
             buffer: RefCell::new(Vec::new()),
-            memcgstat_driver: driver,
-        })
+            memcgstat_driver: MemcgstatDriver::new(relative_path.clone()),
+        };
+
+        let memory_stat_ctrl = cgroup_reader.read_memory_stat().unwrap();
+        let memory_stat_exp = cgroup_reader.read_memcg_stat().unwrap();
+
+        println!("anon: {} / {}", memory_stat_ctrl.anon.unwrap(), memory_stat_exp.anon.unwrap());
+
+        unreachable!("done");
+        Ok(cgroup_reader)
     }
 
     pub fn root() -> Result<CgroupReader> {
@@ -473,7 +477,7 @@ impl CgroupReader {
     }
 
     pub fn read_memcg_stat(&self) -> Result<MemoryStat> {
-        MemoryStat::read(self)
+        Ok(self.memcgstat_driver.read().expect("?"))
     }
 
     pub fn read_memory_events(&self) -> Result<MemoryEvents> {
@@ -646,10 +650,10 @@ impl CgroupReader {
                     let mut relative_path = self.relative_path.clone();
                     relative_path.push(entry.file_name());
                     Some(CgroupReader {
-                        relative_path,
+                        relative_path: relative_path.clone(),
                         dir,
                         buffer: RefCell::new(Vec::new()),
-                        memcgstat_driver: MemcgstatDriver::new(),
+                        memcgstat_driver: MemcgstatDriver::new(relative_path.clone()),
                     })
                 }
                 _ => None,
