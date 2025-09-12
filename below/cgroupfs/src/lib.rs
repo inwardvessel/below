@@ -245,6 +245,8 @@ impl CgroupReader {
             _ => path.push(&relative_path),
         };
         let dir = Dir::open(&path).map_err(|e| Error::IoError(path.clone(), e))?;
+        let dir_fd = dir.as_raw_fd();
+        println!("CgroupReader::new() - path:{}", &path.display());
 
         // Check that it's a cgroup2 fs
         if validate {
@@ -270,13 +272,51 @@ impl CgroupReader {
             relative_path: relative_path.clone(),
             dir,
             buffer: RefCell::new(Vec::new()),
-            memcgstat_driver: MemcgstatDriver::new(relative_path.clone()),
+            memcgstat_driver: MemcgstatDriver::new(dir_fd),
         };
 
         let memory_stat_ctrl = cgroup_reader.read_memory_stat().unwrap();
         let memory_stat_exp = cgroup_reader.read_memcg_stat().unwrap();
 
-        println!("anon: {} / {}", memory_stat_ctrl.anon.unwrap(), memory_stat_exp.anon.unwrap());
+        println!("anon: {:?} / {:?}", memory_stat_ctrl.anon, memory_stat_exp.anon);
+        println!("file: {:?} / {:?}", memory_stat_ctrl.file, memory_stat_exp.file);
+        println!("kernel: {:?} / {:?}", memory_stat_ctrl.kernel, memory_stat_exp.kernel);
+        println!("kernel_stack: {:?} / {:?}", memory_stat_ctrl.kernel_stack, memory_stat_exp.kernel_stack);
+        println!("slab: {:?} / {:?}", memory_stat_ctrl.slab, memory_stat_exp.slab);
+        println!("sock: {:?} / {:?}", memory_stat_ctrl.sock, memory_stat_exp.sock);
+        println!("shmem: {:?} / {:?}", memory_stat_ctrl.shmem, memory_stat_exp.shmem);
+        println!("zswap: {:?} / {:?}", memory_stat_ctrl.zswap, memory_stat_exp.zswap);
+        println!("zswapped: {:?} / {:?}", memory_stat_ctrl.zswapped, memory_stat_exp.zswapped);
+        println!("file_mapped: {:?} / {:?}", memory_stat_ctrl.file_mapped, memory_stat_exp.file_mapped);
+        println!("file_dirty: {:?} / {:?}", memory_stat_ctrl.file_dirty, memory_stat_exp.file_dirty);
+        println!("file_writeback: {:?} / {:?}", memory_stat_ctrl.file_writeback, memory_stat_exp.file_writeback);
+        println!("file_thp: {:?} / {:?}", memory_stat_ctrl.file_thp, memory_stat_exp.file_thp);
+        println!("anon_thp: {:?} / {:?}", memory_stat_ctrl.anon_thp, memory_stat_exp.anon_thp);
+        println!("inactive_anon: {:?} / {:?}", memory_stat_ctrl.inactive_anon, memory_stat_exp.inactive_anon);
+        println!("active_anon: {:?} / {:?}", memory_stat_ctrl.active_anon, memory_stat_exp.active_anon);
+        println!("inactive_file: {:?} / {:?}", memory_stat_ctrl.inactive_file, memory_stat_exp.inactive_file);
+        println!("active_file: {:?} / {:?}", memory_stat_ctrl.active_file, memory_stat_exp.active_file);
+        println!("unevictable: {:?} / {:?}", memory_stat_ctrl.unevictable, memory_stat_exp.unevictable);
+        println!("slab_reclaimable: {:?} / {:?}", memory_stat_ctrl.slab_reclaimable, memory_stat_exp.slab_reclaimable);
+        println!("slab_unreclaimable: {:?} / {:?}", memory_stat_ctrl.slab_unreclaimable, memory_stat_exp.slab_unreclaimable);
+        println!("pgfault: {:?} / {:?}", memory_stat_ctrl.pgfault, memory_stat_exp.pgfault);
+        println!("pgmajfault: {:?} / {:?}", memory_stat_ctrl.pgmajfault, memory_stat_exp.pgmajfault);
+        println!("workingset_refault_anon: {:?} / {:?}", memory_stat_ctrl.workingset_refault_anon, memory_stat_exp.workingset_refault_anon);
+        println!("workingset_refault_file: {:?} / {:?}", memory_stat_ctrl.workingset_refault_file, memory_stat_exp.workingset_refault_file);
+        println!("workingset_activate_anon: {:?} / {:?}", memory_stat_ctrl.workingset_activate_anon, memory_stat_exp.workingset_activate_anon);
+        println!("workingset_activate_file: {:?} / {:?}", memory_stat_ctrl.workingset_activate_file, memory_stat_exp.workingset_activate_file);
+        println!("workingset_restore_anon: {:?} / {:?}", memory_stat_ctrl.workingset_restore_anon, memory_stat_exp.workingset_restore_anon);
+        println!("workingset_restore_file: {:?} / {:?}", memory_stat_ctrl.workingset_restore_file, memory_stat_exp.workingset_restore_file);
+        println!("workingset_nodereclaim: {:?} / {:?}", memory_stat_ctrl.workingset_nodereclaim, memory_stat_exp.workingset_nodereclaim);
+        println!("pgrefill: {:?} / {:?}", memory_stat_ctrl.pgrefill, memory_stat_exp.pgrefill);
+        println!("pgscan: {:?} / {:?}", memory_stat_ctrl.pgscan, memory_stat_exp.pgscan);
+        println!("pgsteal: {:?} / {:?}", memory_stat_ctrl.pgsteal, memory_stat_exp.pgsteal);
+        println!("pgactivate: {:?} / {:?}", memory_stat_ctrl.pgactivate, memory_stat_exp.pgactivate);
+        println!("pgdeactivate: {:?} / {:?}", memory_stat_ctrl.pgdeactivate, memory_stat_exp.pgdeactivate);
+        println!("pglazyfree: {:?} / {:?}", memory_stat_ctrl.pglazyfree, memory_stat_exp.pglazyfree);
+        println!("pglazyfreed: {:?} / {:?}", memory_stat_ctrl.pglazyfreed, memory_stat_exp.pglazyfreed);
+        println!("thp_fault_alloc: {:?} / {:?}", memory_stat_ctrl.thp_fault_alloc, memory_stat_exp.thp_fault_alloc);
+        println!("thp_collapse_alloc: {:?} / {:?}", memory_stat_ctrl.thp_collapse_alloc, memory_stat_exp.thp_collapse_alloc);
 
         unreachable!("done");
         Ok(cgroup_reader)
@@ -647,13 +687,14 @@ impl CgroupReader {
                         Ok(d) => d,
                         Err(_) => return None,
                     };
+                    let dir_fd = dir.as_raw_fd();
                     let mut relative_path = self.relative_path.clone();
                     relative_path.push(entry.file_name());
                     Some(CgroupReader {
                         relative_path: relative_path.clone(),
                         dir,
                         buffer: RefCell::new(Vec::new()),
-                        memcgstat_driver: MemcgstatDriver::new(relative_path.clone()),
+                        memcgstat_driver: MemcgstatDriver::new(dir_fd),
                     })
                 }
                 _ => None,
