@@ -145,6 +145,31 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 				results[item] = memcg_stat_fetch_if_exists(cgrp, MEMCG_ZSWAPPED);
 				break;
 			/* vm_event_item */
+			case USER_PGSCAN_KSWAPD:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSCAN_KSWAPD);
+				break;
+			case USER_PGSCAN_DIRECT:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSCAN_DIRECT);
+				break;
+			case USER_PGSCAN_KHUGEPAGED:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSCAN_KHUGEPAGED);
+				break;
+			case USER_PGSCAN_PROACTIVE:
+				if (bpf_core_enum_value_exists(enum vm_event_item, PGSCAN_PROACTIVE))
+					results[item] = (long)vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item));
+				break;
+			case USER_PGSTEAL_KSWAPD:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSTEAL_KSWAPD);
+				break;
+			case USER_PGSTEAL_DIRECT:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSTEAL_DIRECT);
+				break;
+			case USER_PGSTEAL_KHUGEPAGED:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSTEAL_KHUGEPAGED);
+				break;
+			case USER_PGSTEAL_PROACTIVE:
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSTEAL_PROACTIVE);
+				break;
 			case USER_PGFAULT:
 				results[item] = vm_event_fetch_if_exists(cgrp, PGFAULT);
 				break;

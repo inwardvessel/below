@@ -274,15 +274,15 @@ impl MemcgstatDriver {
             anon: fetch_from_slice(bpf::memcg_item_USER_NR_ANON_MAPPED, &buf, "anon"),
             file: fetch_from_slice(bpf::memcg_item_USER_NR_FILE_PAGES, &buf, "file"),
             kernel: fetch_from_slice(bpf::memcg_item_USER_MEMCG_KMEM, &buf, "kernel"),
-            kernel_stack: None, /* ?*/
-            slab: None,
+            kernel_stack: fetch_from_slice(bpf::memcg_item_USER_NR_KERNEL_STACK_KB, &buf, "kernel_stack"),
+            slab: fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B, &buf, "slab"),
             sock: fetch_from_slice(bpf::memcg_item_USER_MEMCG_SOCK, &buf, "sock"),
             shmem: fetch_from_slice(bpf::memcg_item_USER_NR_SHMEM, &buf, "shmem"),
             zswap: fetch_from_slice(bpf::memcg_item_USER_MEMCG_ZSWAP_B, &buf, "zswap"),
             zswapped: fetch_from_slice(bpf::memcg_item_USER_MEMCG_ZSWAPPED, &buf, "zswapped"),
             file_mapped: fetch_from_slice(bpf::memcg_item_USER_NR_FILE_MAPPED, &buf, "file_mapped"),
             file_dirty: fetch_from_slice(bpf::memcg_item_USER_NR_FILE_DIRTY, &buf, "file_dirty"),
-            file_writeback: None, /*?*/
+            file_writeback: fetch_from_slice(bpf::memcg_item_USER_NR_WRITEBACK, &buf, "file_writeback"),
             file_thp: fetch_from_slice(bpf::memcg_item_USER_NR_FILE_THPS, &buf, "file_thp"),
             anon_thp: fetch_from_slice(bpf::memcg_item_USER_NR_ANON_THPS, &buf, "anon_thp"),
             inactive_anon: fetch_from_slice(bpf::memcg_item_USER_NR_INACTIVE_ANON, &buf, "inactive_anon"),
@@ -302,14 +302,22 @@ impl MemcgstatDriver {
             workingset_restore_file: fetch_from_slice(bpf::memcg_item_USER_WORKINGSET_RESTORE_FILE, &buf, "workingset_restore_file"),
             workingset_nodereclaim: fetch_from_slice(bpf::memcg_item_USER_WORKINGSET_NODERECLAIM, &buf, "workingset_nodereclaim"),
             pgrefill: fetch_from_slice(bpf::memcg_item_USER_PGREFILL, &buf, "pgrefill"),
-            pgscan: None,
-            pgsteal: None,
-            pgactivate: None,
-            pgdeactivate: None,
-            pglazyfree: None,
-            pglazyfreed: None,
-            thp_fault_alloc: None, /*?*/
-            thp_collapse_alloc: None, /*?*/
+            pgscan:
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KSWAPD, &buf, "pgscan_kswapd") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_DIRECT, &buf, "pgscan_direct") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KHUGEPAGED, &buf, "pgscan_khugepaged") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_PROACTIVE, &buf, "pgscan_proactive"),
+            pgsteal:
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KSWAPD, &buf, "pgsteal_kswap") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_DIRECT, &buf, "pgsteal_direct") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KHUGEPAGED, &buf, "pgsteal_khuged") +
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_PROACTIVE, &buf, "pgsteal_proactive"),
+            pgactivate: fetch_from_slice(bpf::memcg_item_USER_PGACTIVATE, &buf, "pgactivate"),
+            pgdeactivate: fetch_from_slice(bpf::memcg_item_USER_PGDEACTIVATE, &buf, "pgdeactivate"),
+            pglazyfree: fetch_from_slice(bpf::memcg_item_USER_PGLAZYFREE, &buf, "pglazyfree"),
+            pglazyfreed: fetch_from_slice(bpf::memcg_item_USER_PGLAZYFREED, &buf, "pglazyfreed"),
+            thp_fault_alloc: fetch_from_slice(bpf::memcg_item_USER_THP_FAULT_ALLOC, &buf, "thp_fault_alloc"),
+            thp_collapse_alloc: fetch_from_slice(bpf::memcg_item_USER_THP_COLLAPSE_ALLOC, &buf, "thp_collapse_alloc"),
         })
     }
 }
