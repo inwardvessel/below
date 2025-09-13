@@ -63,159 +63,6 @@ fn fetch_from_slice(item: bpf::memcg_item, buf: &Vec<u8>, name: &str) -> Option<
     Some(n.try_into().unwrap())
 }
 
-struct Pair<'a> {
-    key: bpf::memcg_item,
-    val: &'a str,
-}
-
-static pairs: [Pair; bpf::memcg_item_USER_ITEM_COUNT as usize] = [
-    Pair {
-        key: bpf::memcg_item_USER_NR_ANON_MAPPED,
-        val: "nr_anon_mapped",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_FILE_PAGES,
-        val: "nr_file_pages",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_KERNEL_STACK_KB,
-        val: "nr_kernel_stack_kb",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_SHMEM,
-        val: "nr_shmem",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_FILE_MAPPED,
-        val: "nr_file_mapped",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_FILE_DIRTY,
-        val: "nr_file_dirty",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_WRITEBACK,
-        val: "nr_writeback",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_FILE_THPS,
-        val: "nr_file_thps",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_ANON_THPS,
-        val: "nr_anon_thps",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_INACTIVE_ANON,
-        val: "nr_inactive_anon",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_ACTIVE_ANON,
-        val: "nr_active_anon",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_INACTIVE_FILE,
-        val: "nr_inactive_file",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_ACTIVE_FILE,
-        val: "nr_active_file",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_UNEVICTABLE,
-        val: "nr_unevictable",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_SLAB_RECLAIMABLE_B,
-        val: "nr_slab_reclaimable_b",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B,
-        val: "nr_slab_unreclaimable_b",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_REFAULT_ANON,
-        val: "workingset_refault_anon",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_REFAULT_FILE,
-        val: "workingset_refault_file",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_ACTIVATE_ANON,
-        val: "workingset_activate_anon",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_ACTIVATE_FILE,
-        val: "workingset_activate_file",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_RESTORE_ANON,
-        val: "workingset_restore_anon",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_RESTORE_FILE,
-        val: "workingset_restore_file",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_WORKINGSET_NODERECLAIM,
-        val: "workingset_nodereclaim",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_MEMCG_KMEM,
-        val: "memcg_kmem",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_MEMCG_SOCK,
-        val: "memcg_sock",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_MEMCG_ZSWAP_B,
-        val: "memcg_zswap_b",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_MEMCG_ZSWAPPED,
-        val: "memcg_zswapped",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGFAULT,
-        val: "pgfault",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGMAJFAULT,
-        val: "pgmajfault",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGREFILL,
-        val: "pgrefill",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGACTIVATE,
-        val: "pgactivate",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGDEACTIVATE,
-        val: "pgdeactivate",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGLAZYFREE,
-        val: "pglazyfree",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_PGLAZYFREED,
-        val: "pglazyfreed",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_THP_FAULT_ALLOC,
-        val: "thp_fault_alloc",
-    },
-    Pair {
-        key: bpf::memcg_item_USER_THP_COLLAPSE_ALLOC,
-        val: "thp_collapse_alloc",
-    },
-];
-
-
 pub struct MemcgstatDriver {
     cgroup_fd: RawFd,
     //pub skel_builder: MemcgstatSkelBuilder,
@@ -303,15 +150,17 @@ impl MemcgstatDriver {
             workingset_nodereclaim: fetch_from_slice(bpf::memcg_item_USER_WORKINGSET_NODERECLAIM, &buf, "workingset_nodereclaim"),
             pgrefill: fetch_from_slice(bpf::memcg_item_USER_PGREFILL, &buf, "pgrefill"),
             pgscan:
-                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KSWAPD, &buf, "pgscan_kswapd") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_DIRECT, &buf, "pgscan_direct") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KHUGEPAGED, &buf, "pgscan_khugepaged") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_PROACTIVE, &buf, "pgscan_proactive"),
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KSWAPD, &buf, "pgscan_kswapd").and_then(|kswapd|
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_DIRECT, &buf, "pgscan_direct").and_then(|direct|
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_KHUGEPAGED, &buf, "pgscan_khugepaged").and_then(|khugepaged|
+                fetch_from_slice(bpf::memcg_item_USER_PGSCAN_PROACTIVE, &buf, "pgscan_proactive").map(|proactive|
+                    kswapd + direct + khugepaged + proactive)))),
             pgsteal:
-                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KSWAPD, &buf, "pgsteal_kswap") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_DIRECT, &buf, "pgsteal_direct") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KHUGEPAGED, &buf, "pgsteal_khuged") +
-                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_PROACTIVE, &buf, "pgsteal_proactive"),
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KSWAPD, &buf, "pgsteal_kswapd").and_then(|kswapd|
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_DIRECT, &buf, "pgsteal_direct").and_then(|direct|
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_KHUGEPAGED, &buf, "pgsteal_khugepaged").and_then(|khugepaged|
+                fetch_from_slice(bpf::memcg_item_USER_PGSTEAL_PROACTIVE, &buf, "pgsteal_proactive").map(|proactive|
+                    kswapd + direct + khugepaged + proactive)))),
             pgactivate: fetch_from_slice(bpf::memcg_item_USER_PGACTIVATE, &buf, "pgactivate"),
             pgdeactivate: fetch_from_slice(bpf::memcg_item_USER_PGDEACTIVATE, &buf, "pgdeactivate"),
             pglazyfree: fetch_from_slice(bpf::memcg_item_USER_PGLAZYFREE, &buf, "pglazyfree"),

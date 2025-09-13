@@ -155,8 +155,7 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 				results[item] = vm_event_fetch_if_exists(cgrp, PGSCAN_KHUGEPAGED);
 				break;
 			case USER_PGSCAN_PROACTIVE:
-				if (bpf_core_enum_value_exists(enum vm_event_item, PGSCAN_PROACTIVE))
-					results[item] = (long)vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item));
+				results[item] = vm_event_fetch_if_exists(cgrp, PGSCAN_PROACTIVE);
 				break;
 			case USER_PGSTEAL_KSWAPD:
 				results[item] = vm_event_fetch_if_exists(cgrp, PGSTEAL_KSWAPD);
@@ -197,7 +196,8 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 			case USER_THP_COLLAPSE_ALLOC:
 				results[item] = vm_event_fetch_if_exists(cgrp, THP_COLLAPSE_ALLOC);
 				break;
-			/* no default */
+			case USER_ITEM_COUNT:
+				break;
 		}
 	}
 
