@@ -54,7 +54,6 @@ fn fetch_from_slice(item: bpf::memcg_item, buf: &Vec<u8>, name: &str) -> Option<
     let chunk = &buf[offset..offset + 8];
     let _buf: [u8; 8] = chunk.try_into().unwrap();
     let n = i64::from_le_bytes(_buf);
-    println!("i:{}, name:{}, n:{}", i, name, n);
 
     if n < 0 {
         return None;
@@ -122,7 +121,6 @@ impl MemcgstatDriver {
             file: fetch_from_slice(bpf::memcg_item_USER_NR_FILE_PAGES, &buf, "file"),
             kernel: fetch_from_slice(bpf::memcg_item_USER_MEMCG_KMEM, &buf, "kernel"),
             kernel_stack: fetch_from_slice(bpf::memcg_item_USER_NR_KERNEL_STACK_KB, &buf, "kernel_stack"),
-            slab: fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B, &buf, "slab"),
             sock: fetch_from_slice(bpf::memcg_item_USER_MEMCG_SOCK, &buf, "sock"),
             shmem: fetch_from_slice(bpf::memcg_item_USER_NR_SHMEM, &buf, "shmem"),
             zswap: fetch_from_slice(bpf::memcg_item_USER_MEMCG_ZSWAP_B, &buf, "zswap"),
@@ -139,6 +137,9 @@ impl MemcgstatDriver {
             unevictable: fetch_from_slice(bpf::memcg_item_USER_NR_UNEVICTABLE, &buf, "unevictable"),
             slab_reclaimable: fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_RECLAIMABLE_B, &buf, "slab_reclaimable"),
             slab_unreclaimable: fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B, &buf, "slab_unreclaimable"),
+            slab: fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_RECLAIMABLE_B, &buf, "slab_reclaimable").and_then(|slab_reclaimable|
+                fetch_from_slice(bpf::memcg_item_USER_NR_SLAB_UNRECLAIMABLE_B, &buf, "slab_unreclaimable").map(|slab_unreclaimable|
+                    slab_reclaimable + slab_unreclaimable)),
             pgfault: fetch_from_slice(bpf::memcg_item_USER_PGFAULT, &buf, "pgfault"),
             pgmajfault: fetch_from_slice(bpf::memcg_item_USER_PGMAJFAULT, &buf, "pgmajfault"),
             workingset_refault_anon: fetch_from_slice(bpf::memcg_item_USER_WORKINGSET_REFAULT_ANON, &buf, "workingset_refault_anon"),

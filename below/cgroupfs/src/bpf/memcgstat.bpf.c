@@ -29,29 +29,27 @@ extern unsigned long node_stat_fetch(struct cgroup *cgrp, enum node_stat_item it
 extern unsigned long vm_event_fetch(struct cgroup *cgrp, enum vm_event_item item) __ksym;
 extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, enum memcg_stat_item item) __ksym;
 
-long results[USER_ITEM_COUNT];
+long long results[USER_ITEM_COUNT];
 
 #define node_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum node_stat_item, item) ? \
-		 (long)node_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
-				 : -1;
-
-#define vm_event_fetch_if_exists(cgrp, item) \
-	bpf_core_enum_value_exists(enum vm_event_item, item) ? \
-		 (long)vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item)) \
+		 (long long)node_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
 				 : -1;
 
 #define memcg_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum memcg_stat_item, item) ? \
-		 (long)node_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+		 (long long)node_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+				 : -1;
+
+#define vm_event_fetch_if_exists(cgrp, item) \
+	bpf_core_enum_value_exists(enum vm_event_item, item) ? \
+		 (long long)vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item)) \
 				 : -1;
 
 SEC("iter/cgroup")
 int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 {
 	struct seq_file *seq = meta->seq;
-
-	bpf_printk("call\n");
 
 	if (!cgrp)
 		return 1;
@@ -197,6 +195,7 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 				results[item] = vm_event_fetch_if_exists(cgrp, THP_COLLAPSE_ALLOC);
 				break;
 			case USER_ITEM_COUNT:
+				/* no-op: this item included to avoid the need for a default case */
 				break;
 		}
 	}

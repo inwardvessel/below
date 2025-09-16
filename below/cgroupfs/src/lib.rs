@@ -282,7 +282,6 @@ impl CgroupReader {
         println!("file: {:?} / {:?}", memory_stat_ctrl.file, memory_stat_exp.file);
         println!("kernel: {:?} / {:?}", memory_stat_ctrl.kernel, memory_stat_exp.kernel);
         println!("kernel_stack: {:?} / {:?}", memory_stat_ctrl.kernel_stack, memory_stat_exp.kernel_stack);
-        println!("slab: {:?} / {:?}", memory_stat_ctrl.slab, memory_stat_exp.slab);
         println!("sock: {:?} / {:?}", memory_stat_ctrl.sock, memory_stat_exp.sock);
         println!("shmem: {:?} / {:?}", memory_stat_ctrl.shmem, memory_stat_exp.shmem);
         println!("zswap: {:?} / {:?}", memory_stat_ctrl.zswap, memory_stat_exp.zswap);
@@ -299,6 +298,7 @@ impl CgroupReader {
         println!("unevictable: {:?} / {:?}", memory_stat_ctrl.unevictable, memory_stat_exp.unevictable);
         println!("slab_reclaimable: {:?} / {:?}", memory_stat_ctrl.slab_reclaimable, memory_stat_exp.slab_reclaimable);
         println!("slab_unreclaimable: {:?} / {:?}", memory_stat_ctrl.slab_unreclaimable, memory_stat_exp.slab_unreclaimable);
+        println!("slab: {:?} / {:?}", memory_stat_ctrl.slab, memory_stat_exp.slab);
         println!("pgfault: {:?} / {:?}", memory_stat_ctrl.pgfault, memory_stat_exp.pgfault);
         println!("pgmajfault: {:?} / {:?}", memory_stat_ctrl.pgmajfault, memory_stat_exp.pgmajfault);
         println!("workingset_refault_anon: {:?} / {:?}", memory_stat_ctrl.workingset_refault_anon, memory_stat_exp.workingset_refault_anon);
@@ -318,7 +318,7 @@ impl CgroupReader {
         println!("thp_fault_alloc: {:?} / {:?}", memory_stat_ctrl.thp_fault_alloc, memory_stat_exp.thp_fault_alloc);
         println!("thp_collapse_alloc: {:?} / {:?}", memory_stat_ctrl.thp_collapse_alloc, memory_stat_exp.thp_collapse_alloc);
 
-        unreachable!("done");
+        unreachable!("end prog");
         Ok(cgroup_reader)
     }
 
