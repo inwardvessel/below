@@ -63,7 +63,7 @@ fn fetch_from_slice(item: bpf::memcg_item, buf: &Vec<u8>, name: &str) -> Option<
 }
 
 pub struct MemcgstatDriver {
-    cgroup_fd: RawFd,
+    link: Link,
     //pub skel_builder: MemcgstatSkelBuilder,
     //pub open_skel: OpenMemcgstatSkel<'a>,
     //pub object: MaybeUninit<'a, libbpf_rs::OpenObject>,
@@ -72,21 +72,14 @@ pub struct MemcgstatDriver {
 
 impl MemcgstatDriver {
     pub fn new(cgroup_fd: RawFd) -> Self {
-        // TODO - figure out borrowing/moving and move all initialization out of read() and here instead
-        Self {
-            cgroup_fd: cgroup_fd,
-        }
-    }
-
-    pub fn read(&self) -> Result<MemoryStat, ()> {
         let skel_builder = MemcgstatSkelBuilder::default();
         let mut object = MaybeUninit::uninit();
         let open_skel = skel_builder.open(&mut object).expect("failed to open skel");
         let skel = open_skel.load().expect("load error: {error:?}");
-        //let mut cgroup_dir = File::open(self.cgroup_path.clone()).expect("failed to open cgroup dir");
+
         let mut link_info = unsafe {
             let mut _link_info: bpf_iter_link_info = std::mem::zeroed();
-            _link_info.cgroup.cgroup_fd = self.cgroup_fd as u32;
+            _link_info.cgroup.cgroup_fd = cgroup_fd as u32;
             _link_info.cgroup.order = 1; /* BPF_CGROUP_ITER_SELF_ONLY = 1 */
             _link_info
         };
@@ -106,15 +99,19 @@ impl MemcgstatDriver {
             panic!("link is null");
         }
 
-        let link_x = NonNull::new(link_ptr).expect("pointer");
         let link = unsafe {
-            Link::from_ptr(link_x)
+            Link::from_ptr(NonNull::new(link_ptr).expect("pointer"))
         };
 
-        let mut iter = Iter::new(&link).unwrap();
+        Self {
+            link: link,
+        }
+    }
+
+    pub fn read(&self) -> Result<MemoryStat, ()> {
+        let mut iter = Iter::new(&self.link).unwrap();
         let mut buf = Vec::new();
         let bytes = iter.read_to_end(&mut buf).expect("fail iter read");
-        println!("read bytes:{}, item count:{}", bytes, bpf::memcg_item_USER_ITEM_COUNT);
 
         Ok(MemoryStat {
             anon: fetch_from_slice(bpf::memcg_item_USER_NR_ANON_MAPPED, &buf, "anon"),
