@@ -275,6 +275,11 @@ impl CgroupReader {
             memcgstat_driver: MemcgstatDriver::new(dir_fd),
         };
 
+        //for i in 0..1000000 {
+        //    let memory_stat = cgroup_reader.read_memcg_stat().unwrap();
+        //}
+        //unreachable!("end prog");
+
         let memory_stat_ctrl = cgroup_reader.read_memory_stat().unwrap();
         let memory_stat_exp = cgroup_reader.read_memcg_stat().unwrap();
 

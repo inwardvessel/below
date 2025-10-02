@@ -24,26 +24,26 @@
 
 char _license[] SEC("license") = "GPL";
 
-extern void memcg_flush(struct cgroup *cgrp) __ksym;
-extern unsigned long node_stat_fetch(struct cgroup *cgrp, enum node_stat_item item) __ksym;
-extern unsigned long vm_event_fetch(struct cgroup *cgrp, enum vm_event_item item) __ksym;
+extern void memcg_flush_stats(struct cgroup *cgrp) __ksym;
 extern unsigned long memcg_stat_fetch(struct cgroup *cgrp, enum memcg_stat_item item) __ksym;
+extern unsigned long memcg_node_stat_fetch(struct cgroup *cgrp, enum node_stat_item item) __ksym;
+extern unsigned long memcg_vm_event_fetch(struct cgroup *cgrp, enum vm_event_item item) __ksym;
 
 s64 results[USER_ITEM_COUNT];
 
-#define node_stat_fetch_if_exists(cgrp, item) \
-	bpf_core_enum_value_exists(enum node_stat_item, item) ? \
-		 node_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
-				 : -1;
-
 #define memcg_stat_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum memcg_stat_item, item) ? \
-		 node_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+		 memcg_node_stat_fetch(cgrp, bpf_core_enum_value(enum memcg_stat_item, item)) \
+				 : -1;
+
+#define node_stat_fetch_if_exists(cgrp, item) \
+	bpf_core_enum_value_exists(enum node_stat_item, item) ? \
+		 memcg_node_stat_fetch(cgrp, bpf_core_enum_value(enum node_stat_item, item)) \
 				 : -1;
 
 #define vm_event_fetch_if_exists(cgrp, item) \
 	bpf_core_enum_value_exists(enum vm_event_item, item) ? \
-		 vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item)) \
+		 memcg_vm_event_fetch(cgrp, bpf_core_enum_value(enum vm_event_item, item)) \
 				 : -1;
 
 SEC("iter/cgroup")
@@ -54,7 +54,7 @@ int BPF_PROG(query, struct bpf_iter_meta *meta, struct cgroup *cgrp)
 	if (!cgrp)
 		return 1;
 
-	memcg_flush(cgrp);
+	memcg_flush_stats(cgrp);
 
 	enum memcg_item item;
 	for (item = 0; item < USER_ITEM_COUNT; item++) {
