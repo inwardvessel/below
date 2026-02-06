@@ -15,8 +15,10 @@
 use std::io::Read;
 use std::mem::MaybeUninit;
 use std::os::fd::BorrowedFd;
+use std::sync::OnceLock;
 
 use libbpf_rs::skel::OpenSkel as _;
+use libbpf_rs::skel::Skel as _;
 use libbpf_rs::skel::SkelBuilder as _;
 use libbpf_rs::{CgroupIterOpts, CgroupIterOrder, Iter, IterOpts, Link, ProgramMut};
 
@@ -28,6 +30,50 @@ mod bpf {
 }
 
 pub use bpf::MemcgstatSkelBuilder;
+
+/// Holds the loaded BPF skeleton with stable storage.
+/// The skeleton is loaded once and persists for the lifetime of the program.
+struct SkeletonHolder {
+    // Box provides stable address for the MaybeUninit storage
+    _object: Box<MaybeUninit<libbpf_rs::OpenObject>>,
+    skel: bpf::MemcgstatSkel<'static>,
+}
+
+// SAFETY: The skeleton and its backing storage are heap-allocated with stable addresses.
+// The BPF objects (programs, maps) are managed by the kernel once loaded.
+unsafe impl Send for SkeletonHolder {}
+unsafe impl Sync for SkeletonHolder {}
+
+impl SkeletonHolder {
+    fn new() -> Option<Self> {
+        let skel_builder = MemcgstatSkelBuilder::default();
+        let mut object = Box::new(MaybeUninit::uninit());
+
+        // SAFETY: We're extending the lifetime of the reference to 'static because
+        // the Box provides stable heap storage that will live as long as SkeletonHolder.
+        let object_ref: &'static mut MaybeUninit<libbpf_rs::OpenObject> =
+            unsafe { &mut *(object.as_mut() as *mut _) };
+
+        let open_skel = skel_builder.open(object_ref).ok()?;
+        let skel = open_skel.load().ok()?;
+
+        Some(Self {
+            _object: object,
+            skel,
+        })
+    }
+
+    fn create_link(&self, cgroup_fd: BorrowedFd<'_>) -> Option<Link> {
+        attach_cgroup_iter(&self.skel.progs.query, cgroup_fd).ok()
+    }
+}
+
+/// Global skeleton instance, initialized once on first use.
+static SKELETON: OnceLock<Option<SkeletonHolder>> = OnceLock::new();
+
+fn get_skeleton() -> Option<&'static SkeletonHolder> {
+    SKELETON.get_or_init(|| SkeletonHolder::new()).as_ref()
+}
 
 /// Attach a BPF iterator program to a cgroup using the safe libbpf-rs API.
 fn attach_cgroup_iter(prog: &ProgramMut, cgroup_fd: BorrowedFd<'_>) -> Result<Link, libbpf_rs::Error> {
@@ -60,12 +106,8 @@ pub struct MemcgstatDriver {
 
 impl MemcgstatDriver {
     pub fn new(cgroup_fd: BorrowedFd<'_>) -> Option<Self> {
-        let skel_builder = MemcgstatSkelBuilder::default();
-        let mut object = MaybeUninit::uninit();
-        let open_skel = skel_builder.open(&mut object).ok()?;
-        let skel = open_skel.load().ok()?;
-        let link = attach_cgroup_iter(&skel.progs.query, cgroup_fd).ok()?;
-
+        let skel = get_skeleton()?;
+        let link = skel.create_link(cgroup_fd)?;
         Some(Self { link })
     }
 
