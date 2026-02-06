@@ -245,15 +245,15 @@ impl CgroupReader {
             _ => path.push(&relative_path),
         };
         let dir = Dir::open(&path).map_err(|e| Error::IoError(path.clone(), e))?;
-        let dir_fd = dir.as_raw_fd();
         println!("CgroupReader::new() - path:{}", &path.display());
+
+        // SAFETY: dir is a valid, open fd (Dir::open succeeded). The BorrowedFd
+        // doesn't outlive dir. openat::Dir lacks AsFd impl (see nix#2546).
+        let borrowed_fd = unsafe { BorrowedFd::borrow_raw(dir.as_raw_fd()) };
 
         // Check that it's a cgroup2 fs
         if validate {
-            // SAFETY: Fix when https://github.com/nix-rust/nix/issues/2546 is
-            let dir = unsafe { BorrowedFd::borrow_raw(dir.as_raw_fd()) };
-
-            let statfs = match fstatfs(dir) {
+            let statfs = match fstatfs(borrowed_fd) {
                 Ok(s) => s,
                 Err(e) => {
                     return Err(Error::IoError(
@@ -272,7 +272,7 @@ impl CgroupReader {
             relative_path: relative_path.clone(),
             dir,
             buffer: RefCell::new(Vec::new()),
-            memcgstat_driver: MemcgstatDriver::new(dir_fd),
+            memcgstat_driver: MemcgstatDriver::new(borrowed_fd),
         };
 
         //for i in 0..1000000 {
@@ -692,14 +692,15 @@ impl CgroupReader {
                         Ok(d) => d,
                         Err(_) => return None,
                     };
-                    let dir_fd = dir.as_raw_fd();
+                    // SAFETY: dir is valid (sub_dir succeeded). BorrowedFd doesn't outlive dir.
+                    let borrowed_fd = unsafe { BorrowedFd::borrow_raw(dir.as_raw_fd()) };
                     let mut relative_path = self.relative_path.clone();
                     relative_path.push(entry.file_name());
                     Some(CgroupReader {
                         relative_path: relative_path.clone(),
                         dir,
                         buffer: RefCell::new(Vec::new()),
-                        memcgstat_driver: MemcgstatDriver::new(dir_fd),
+                        memcgstat_driver: MemcgstatDriver::new(borrowed_fd),
                     })
                 }
                 _ => None,
