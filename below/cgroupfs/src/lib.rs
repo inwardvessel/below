@@ -71,7 +71,7 @@ pub struct CgroupReader {
     relative_path: PathBuf,
     dir: Dir,
     buffer: RefCell<Vec<u8>>,
-    memcgstat_driver: MemcgstatDriver,
+    memcgstat_driver: Option<MemcgstatDriver>,
 }
 
 fn parse_integer_or_max(s: &str) -> std::result::Result<i64, String> {
@@ -245,7 +245,6 @@ impl CgroupReader {
             _ => path.push(&relative_path),
         };
         let dir = Dir::open(&path).map_err(|e| Error::IoError(path.clone(), e))?;
-        println!("CgroupReader::new() - path:{}", &path.display());
 
         // SAFETY: dir is a valid, open fd (Dir::open succeeded). The BorrowedFd
         // doesn't outlive dir. openat::Dir lacks AsFd impl (see nix#2546).
@@ -275,55 +274,6 @@ impl CgroupReader {
             memcgstat_driver: MemcgstatDriver::new(borrowed_fd),
         };
 
-        //for i in 0..1000000 {
-        //    let memory_stat = cgroup_reader.read_memcg_stat().unwrap();
-        //}
-        //unreachable!("end prog");
-
-        let memory_stat_ctrl = cgroup_reader.read_memory_stat().unwrap();
-        let memory_stat_exp = cgroup_reader.read_memcg_stat().unwrap();
-
-        println!("anon: {:?} / {:?}", memory_stat_ctrl.anon, memory_stat_exp.anon);
-        println!("file: {:?} / {:?}", memory_stat_ctrl.file, memory_stat_exp.file);
-        println!("kernel: {:?} / {:?}", memory_stat_ctrl.kernel, memory_stat_exp.kernel);
-        println!("kernel_stack: {:?} / {:?}", memory_stat_ctrl.kernel_stack, memory_stat_exp.kernel_stack);
-        println!("sock: {:?} / {:?}", memory_stat_ctrl.sock, memory_stat_exp.sock);
-        println!("shmem: {:?} / {:?}", memory_stat_ctrl.shmem, memory_stat_exp.shmem);
-        println!("zswap: {:?} / {:?}", memory_stat_ctrl.zswap, memory_stat_exp.zswap);
-        println!("zswapped: {:?} / {:?}", memory_stat_ctrl.zswapped, memory_stat_exp.zswapped);
-        println!("file_mapped: {:?} / {:?}", memory_stat_ctrl.file_mapped, memory_stat_exp.file_mapped);
-        println!("file_dirty: {:?} / {:?}", memory_stat_ctrl.file_dirty, memory_stat_exp.file_dirty);
-        println!("file_writeback: {:?} / {:?}", memory_stat_ctrl.file_writeback, memory_stat_exp.file_writeback);
-        println!("file_thp: {:?} / {:?}", memory_stat_ctrl.file_thp, memory_stat_exp.file_thp);
-        println!("anon_thp: {:?} / {:?}", memory_stat_ctrl.anon_thp, memory_stat_exp.anon_thp);
-        println!("inactive_anon: {:?} / {:?}", memory_stat_ctrl.inactive_anon, memory_stat_exp.inactive_anon);
-        println!("active_anon: {:?} / {:?}", memory_stat_ctrl.active_anon, memory_stat_exp.active_anon);
-        println!("inactive_file: {:?} / {:?}", memory_stat_ctrl.inactive_file, memory_stat_exp.inactive_file);
-        println!("active_file: {:?} / {:?}", memory_stat_ctrl.active_file, memory_stat_exp.active_file);
-        println!("unevictable: {:?} / {:?}", memory_stat_ctrl.unevictable, memory_stat_exp.unevictable);
-        println!("slab_reclaimable: {:?} / {:?}", memory_stat_ctrl.slab_reclaimable, memory_stat_exp.slab_reclaimable);
-        println!("slab_unreclaimable: {:?} / {:?}", memory_stat_ctrl.slab_unreclaimable, memory_stat_exp.slab_unreclaimable);
-        println!("slab: {:?} / {:?}", memory_stat_ctrl.slab, memory_stat_exp.slab);
-        println!("pgfault: {:?} / {:?}", memory_stat_ctrl.pgfault, memory_stat_exp.pgfault);
-        println!("pgmajfault: {:?} / {:?}", memory_stat_ctrl.pgmajfault, memory_stat_exp.pgmajfault);
-        println!("workingset_refault_anon: {:?} / {:?}", memory_stat_ctrl.workingset_refault_anon, memory_stat_exp.workingset_refault_anon);
-        println!("workingset_refault_file: {:?} / {:?}", memory_stat_ctrl.workingset_refault_file, memory_stat_exp.workingset_refault_file);
-        println!("workingset_activate_anon: {:?} / {:?}", memory_stat_ctrl.workingset_activate_anon, memory_stat_exp.workingset_activate_anon);
-        println!("workingset_activate_file: {:?} / {:?}", memory_stat_ctrl.workingset_activate_file, memory_stat_exp.workingset_activate_file);
-        println!("workingset_restore_anon: {:?} / {:?}", memory_stat_ctrl.workingset_restore_anon, memory_stat_exp.workingset_restore_anon);
-        println!("workingset_restore_file: {:?} / {:?}", memory_stat_ctrl.workingset_restore_file, memory_stat_exp.workingset_restore_file);
-        println!("workingset_nodereclaim: {:?} / {:?}", memory_stat_ctrl.workingset_nodereclaim, memory_stat_exp.workingset_nodereclaim);
-        println!("pgrefill: {:?} / {:?}", memory_stat_ctrl.pgrefill, memory_stat_exp.pgrefill);
-        println!("pgscan: {:?} / {:?}", memory_stat_ctrl.pgscan, memory_stat_exp.pgscan);
-        println!("pgsteal: {:?} / {:?}", memory_stat_ctrl.pgsteal, memory_stat_exp.pgsteal);
-        println!("pgactivate: {:?} / {:?}", memory_stat_ctrl.pgactivate, memory_stat_exp.pgactivate);
-        println!("pgdeactivate: {:?} / {:?}", memory_stat_ctrl.pgdeactivate, memory_stat_exp.pgdeactivate);
-        println!("pglazyfree: {:?} / {:?}", memory_stat_ctrl.pglazyfree, memory_stat_exp.pglazyfree);
-        println!("pglazyfreed: {:?} / {:?}", memory_stat_ctrl.pglazyfreed, memory_stat_exp.pglazyfreed);
-        println!("thp_fault_alloc: {:?} / {:?}", memory_stat_ctrl.thp_fault_alloc, memory_stat_exp.thp_fault_alloc);
-        println!("thp_collapse_alloc: {:?} / {:?}", memory_stat_ctrl.thp_collapse_alloc, memory_stat_exp.thp_collapse_alloc);
-
-        unreachable!("end prog");
         Ok(cgroup_reader)
     }
 
@@ -516,13 +466,15 @@ impl CgroupReader {
     }
 
     /// Read memory.stat - returning assorted memory consumption
-    /// statistics
+    /// statistics. Uses BPF iterator if available, otherwise falls back to file parsing.
     pub fn read_memory_stat(&self) -> Result<MemoryStat> {
+        if let Some(ref driver) = self.memcgstat_driver {
+            if let Ok(stat) = driver.read() {
+                return Ok(stat);
+            }
+        }
+        // Fall back to file-based reading
         MemoryStat::read(self)
-    }
-
-    pub fn read_memcg_stat(&self) -> Result<MemoryStat> {
-        Ok(self.memcgstat_driver.read().expect("?"))
     }
 
     pub fn read_memory_events(&self) -> Result<MemoryEvents> {

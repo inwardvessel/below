@@ -59,18 +59,14 @@ pub struct MemcgstatDriver {
 }
 
 impl MemcgstatDriver {
-    pub fn new(cgroup_fd: BorrowedFd<'_>) -> Self {
+    pub fn new(cgroup_fd: BorrowedFd<'_>) -> Option<Self> {
         let skel_builder = MemcgstatSkelBuilder::default();
         let mut object = MaybeUninit::uninit();
-        let open_skel = skel_builder
-            .open(&mut object)
-            .expect("failed to open BPF skeleton");
-        let skel = open_skel.load().expect("failed to load BPF program");
+        let open_skel = skel_builder.open(&mut object).ok()?;
+        let skel = open_skel.load().ok()?;
+        let link = attach_cgroup_iter(&skel.progs.query, cgroup_fd).ok()?;
 
-        let link = attach_cgroup_iter(&skel.progs.query, cgroup_fd)
-            .expect("failed to attach cgroup iterator");
-
-        Self { link }
+        Some(Self { link })
     }
 
     pub fn read(&self) -> Result<MemoryStat, ()> {
